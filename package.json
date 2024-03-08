@@ -1,0 +1,19 @@
+{
+  "name": "vue-dbdl",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {},
+  "keywords": [],
+  "workspaces": [
+    "packages/*"
+  ],
+  "devDependencies": {
+    "typescript": "^5.4.2"
+  },
+  "dependencies": {
+    "@codemirror/autocomplete": "^6.13.0",
+    "@codemirror/language": "^6.10.1",
+    "@codemirror/lint": "^6.5.0",
+    "@codemirror/view": "^6.25.1"
+  }
+}

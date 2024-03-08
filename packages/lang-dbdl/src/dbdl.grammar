@@ -1,0 +1,208 @@
+@top SourceFile {
+    (TableDefinition newline)*
+}
+
+@skip { space | LineComment | BlockComment }
+
+
+kw<term> { @specialize[@name={term}]<Identifier, term> }
+
+TableDefinition {
+    kw<"Table"> TableName TableBlock
+}
+
+TableBlock {
+    "{" newline? Column* IndexBlock? "}"
+}
+
+TableName {
+    Identifier | Backticks
+}
+
+Column {
+    ColumnName DataType Options ColumnComment? newline
+}
+
+ColumnName {
+    Identifier | Backticks
+}
+
+DataType[@dynamicPrecedence=1] {
+    NumericDataType | DateAndTimeType | StringType
+}
+
+Options {
+    (Nullable | DefaultValue | Nullable DefaultValue | DefaultValue Nullable)? (PrimaryKey AutoIncrement? | AutoIncrement PrimaryKey)?
+}
+
+PrimaryKey {
+    kw<"pk">
+}
+
+AutoIncrement {
+    kw<"auto">
+}
+
+ColumnComment {
+    Note | MultiLineString
+}
+
+IndexBlock {
+    kw<"Indexes"> "{" newline? Index* "}" newline
+}
+
+Index {
+    Identifier? "(" ColumnName Sort? ("," ColumnName Sort?)* ")" kw<"unique">? ColumnComment? newline
+}
+
+Sort {
+    kw<"asc"> | kw<"desc">
+}
+
+Nullable {
+    (kw<"not">? kw<"null">)
+}
+
+DefaultValue {
+    (kw<"default"> (String | Number | kw<"null"> | Identifier))
+}
+
+NumericDataType {
+    (IntegerType | DecimalType | BoolType | BitType)
+}
+
+IntegerType {
+    Integer ("(" Precision ")")? (Unsigned Zerofill?)?
+}
+
+Precision {
+   Number
+}
+
+Scale {
+    Number
+}
+
+Integer {
+    kw<"bigint"> | kw<"mediumint"> | kw<"int"> | kw<"integer"> | kw<"smallint"> | kw<"tinyint">
+}
+
+BitType {
+    Bit ("(" Precision ")")? 
+}
+
+Bit {
+    kw<"bit">
+}
+
+BoolType {
+    kw<"bool"> | kw<"boolean">
+}
+
+DecimalType {
+   Decimal ("(" Precision ("," Scale)? ")")? (Unsigned Zerofill?)?
+}
+
+Unsigned {
+    kw<"unsigned">
+}
+
+Zerofill {
+    kw<"zerofill">
+}
+
+Decimal {
+    kw<"decimal"> | kw<"numeric"> | kw<"float"> | kw<"double"> | kw<"real">
+}
+
+DateAndTimeType {
+    DateType | TimeType | YearType
+}
+
+DateType {
+    kw<"date"> | ((kw<"datetime"> | kw<"timestamp">) ("(" Fsp ")")?)
+}
+
+TimeType {
+    kw<"time"> ("(" Fsp ")")?
+}
+
+YearType {
+    kw<"year">
+}
+
+StringType {
+    Char | Text | Binary | Blob | Json | Enum | Set
+}
+
+Charset {
+    kw<"CHARACTER"> kw<"SET"> CharsetName
+}
+
+CharsetName {
+    Identifier
+}
+
+Collate {
+    kw<"COLLATE"> CollateName
+}
+
+CollateName {
+    Identifier
+}
+
+Char {
+    (kw<"char"> | kw<"varchar">) ("(" Precision ")")? (Charset Collate?)?
+}
+
+Text {
+    (kw<"text"> | kw<"tinytext"> | kw<"mediumtext"> | kw<"longtext">) ("(" Precision ")")? (Charset Collate?)?
+}
+
+Binary {
+    kw<"binary"> | kw<"varbinary">
+}
+
+Blob {
+    kw<"tinyblob"> | kw<"mediumblob"> | kw<"longblob"> | kw<"blob">
+}
+
+Json {
+    kw<"json">
+}
+
+Enum {
+    kw<"enum"> "(" (String ("," String)*)? ")" (Charset Collate?)?
+}
+
+Set {
+    kw<"set"> "(" (String ("," String)*)? ")" (Charset Collate?)?
+}
+
+@local tokens {
+    blockCommentEnd { "*/" }
+    blockCommentNewline { "\n" }
+    @else blockCommentContent
+}
+
+@skip {} {
+    BlockComment[isolate] { "/*" (blockCommentContent | blockCommentNewline)* blockCommentEnd }
+}
+
+@tokens {
+    space { $[ \t]+ }
+    newline { $[\n\r]+ }
+    LineComment { "//" ![\n]* }
+    String[isolate] { '"' ("\\" _ | ![\\"\n])* '"'? | '`' ![`]* '`' }
+    Fsp { $[0-6] }
+
+    Note {"#" ![\n]*}
+    MultiLineString { '"""' ("\\" _ | ![\\"])* '"""'? | '```' ![`]* '```' }
+
+    Number { @digit+ }
+    Letter { $[_a-zA-Z] }
+    Identifier[@export] { Letter (Letter | Number)* }
+    Backticks[@export] { '`' (Letter (Letter | Number)*) '`'  }
+}
+
+@detectDelim
