@@ -1,0 +1,152 @@
+@precedence { 
+  dot
+  table
+}
+
+@top Script {
+  TableDeclaration*
+}
+
+@skip { whitespace | newline | LineComment | BlockComment}
+
+kw<term> { @specialize[@name={term}]<Identifier, term> }
+
+@local tokens {
+  tableCommentEnd { "\n" }
+  @else tableCommentContent
+}
+
+@skip {} {
+  TableComment[isolate] {
+    "@" tableCommentContent* tableCommentEnd
+  }
+}
+
+TableDeclaration[@export] {
+  kw<"Table"> TableName TableDeclarationBlock
+}
+
+TableName {
+  Identifier |
+  QuotedIdentifier |
+  CompositeIdentifier {
+    (QuotedIdentifier | Identifier) (!dot Dot (QuotedIdentifier | Identifier))+
+  }
+}
+
+TableDeclarationBlock {
+  "{" tableDeclaration* "}" semi
+}
+
+semi { ";" | insertSemi }
+
+@external tokens insertSemicolon from "./tokens" {
+  insertSemi
+}
+@context trackNewline from "./tokens"
+
+tableDeclaration {
+  ColumnDeclaration | IndexDeclarationBlock | TableComment
+}
+
+ColumnDeclaration {
+  ColumnName ColumnType ColumnOptions*
+}
+
+ColumnName {
+  Identifier | QuotedIdentifier
+}
+
+ColumnType {
+  Type ("(" Precision ("," Scale)? ")")?
+}
+
+Precision {
+  Number
+}
+
+Scale {
+  Number
+}
+
+ColumnOptions {
+  Keyword |
+  String |
+  Bits |
+  Bytes |
+  Number |
+  NotNull |
+  Bool |
+  DefaultValue |
+  Comment |
+  Raw
+}
+
+Comment {
+  HashComment |
+  MultiLineString
+}
+
+DefaultValue {
+  Default (String | Number | Bool | Null | Bits | Bytes | QuotedIdentifier)
+}
+
+@local tokens {
+  rawEnd { "]" }
+  @else rawContent
+}
+
+@skip {} {
+  Raw[isolate] { "[" rawContent*  rawEnd }
+}
+
+NotNull {
+  (Not? Null)
+}
+
+IndexDeclarationBlock {
+  kw<"Index"> "{" IndexDeclaration* "}"
+}
+
+IndexDeclaration {
+  IndexName? "(" (ColumnName Keyword? ("," ColumnName Keyword?)*) ")" indexDeclarationOptionElement*
+}
+
+IndexName {
+  Identifier |
+  QuotedIdentifier 
+}
+
+indexDeclarationOptionElement {
+  Keyword |
+  Comment
+}
+
+
+@tokens {
+  newline[@export] { $[\r\n] }
+  MultiLineString { '"""' ("\\" _ | ![\\"])* '"""'? | '```' ![`]* '```' }
+}
+
+@external tokens tokens from "./tokens" {
+    whitespace
+    LineComment[isolate]
+    BlockComment[isolate]
+    HashComment[isolate]
+    String[isolate]
+    Number
+    Bool
+    Null
+    Default
+    Not
+    Dot[@name="."]
+    Identifier
+    QuotedIdentifier[isolate]
+    Keyword
+    Type
+    Bits
+    Bytes
+  }
+  
+  @detectDelim
+  

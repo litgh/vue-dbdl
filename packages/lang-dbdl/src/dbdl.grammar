@@ -32,7 +32,7 @@ DataType[@dynamicPrecedence=1] {
 }
 
 Options {
-    (Nullable | DefaultValue | Nullable DefaultValue | DefaultValue Nullable)? (PrimaryKey AutoIncrement? | AutoIncrement PrimaryKey)?
+    (Nullable | DefaultValue | Nullable DefaultValue | DefaultValue Nullable)? (PrimaryKey AutoIncrement? | AutoIncrement? PrimaryKey)?
 }
 
 PrimaryKey {
@@ -52,7 +52,19 @@ IndexBlock {
 }
 
 Index {
-    Identifier? "(" ColumnName Sort? ("," ColumnName Sort?)* ")" kw<"unique">? ColumnComment? newline
+    Identifier? IndexColumnBlock IndexType? ColumnComment? newline
+}
+
+IndexColumnBlock {
+    "(" IndexColumnName Sort? ("," IndexColumnName Sort?)* ")"
+}
+
+IndexType {
+    (kw<"unique"> (kw<"btree"> | kw<"hash">)?) | ((kw<"btree"> | kw<"hash">) kw<"unique">?)
+}
+
+IndexColumnName {
+    Identifier | Backticks
 }
 
 Sort {

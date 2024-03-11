@@ -1,0 +1,7 @@
+# TableDefinition
+Table user {
+  id int not null pk auto default b'0'
+}
+
+====>
+...

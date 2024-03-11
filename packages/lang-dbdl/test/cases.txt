@@ -1,8 +1,7 @@
 # TableDefinition
 
 Table user {
-  id int not null pk auto # 主键
-  // 其他字段
+  id int not null pk auto
 }
 
 ====>

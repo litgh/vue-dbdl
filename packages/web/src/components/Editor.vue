@@ -18,133 +18,130 @@
     <span class="inline-block">
       {{ state.lines }}:{{ state.cursor }}{{ state.selected }}
     </span>
+    <span class="inline-block">pos:{{ state.pos }}</span>
     <span class="inline-block">{{ config.tabSize }} spaces</span>
   </div>
 </template>
 
 <script lang="ts">
-  import { defineComponent, reactive, shallowRef, computed, ref, watch } from 'vue';
-  import { EditorView, ViewUpdate } from '@codemirror/view';
-  import { redo, undo } from '@codemirror/commands';
-  import { Codemirror } from 'vue-codemirror';
-  import { debounce } from 'lodash';
+import {
+  defineComponent,
+  reactive,
+  shallowRef,
+  ref,
+  watch,
+  PropType,
+} from "vue";
+import { EditorView, ViewUpdate } from "@codemirror/view";
+import { redo, undo } from "@codemirror/commands";
+import { Codemirror } from "vue-codemirror";
+import { debounce } from "lodash";
+import { Extension } from "@codemirror/state";
 
-  export default defineComponent({
-    name: 'Editor',
-    title: 'Editor',
-    url: import.meta.url,
-    props: {
-      config: {
-        type: Object,
-        required: true,
-      },
-      code: {
-        type: String,
-        required: false,
-      },
-      theme: [Object, Array],
-      language: Function,
+export default defineComponent({
+  name: "Editor",
+  title: "Editor",
+  url: import.meta.url,
+  props: {
+    config: {
+      type: Object,
+      required: true,
     },
-    emits: ['change'],
-    components: {
-      Codemirror,
+    code: {
+      type: String,
+      required: false,
     },
-    setup(props, { emit }) {
-      const log = console.log;
-      const internalCode = ref(props.code);
-      watch(
-        () => props.code,
-        (newCode) => {
-          internalCode.value = newCode;
-        }
+    extensions: {
+      type: Array as PropType<Array<Extension>>,
+      required: false,
+    },
+  },
+  emits: ["change", "autoSave"],
+  components: {
+    Codemirror,
+  },
+  setup(props, { emit }) {
+    let modified = false;
+    const log = console.log;
+    const internalCode = ref(props.code);
+    watch(
+      () => props.code,
+      (newCode) => {
+        internalCode.value = newCode;
+      }
+    );
+
+    setInterval(() => {
+      if (modified) {
+        emit("autoSave", internalCode.value);
+        modified = false;
+      }
+    }, 5000);
+
+    const cmView = shallowRef<EditorView>();
+    const handleReady = ({ view }: any) => {
+      cmView.value = view;
+    };
+
+    // https://github.com/codemirror/commands/blob/main/test/test-history.ts
+    const handleUndo = () => {
+      undo({
+        state: cmView.value!.state,
+        dispatch: cmView.value!.dispatch,
+      });
+    };
+
+    const handleRedo = () => {
+      redo({
+        state: cmView.value!.state,
+        dispatch: cmView.value!.dispatch,
+      });
+    };
+
+    const state = reactive({
+      lines: 0,
+      cursor: 0,
+      selected: "",
+      length: 0,
+      pos: 0,
+    });
+
+    const handleStateUpdate = (viewUpdate: ViewUpdate) => {
+      // selected
+      const ranges = viewUpdate.state.selection.ranges;
+      const selected = ranges.reduce(
+        (plus, range) => plus + range.to - range.from,
+        0
       );
+      state.selected =
+        selected > 0 ? `(${selected} char${selected > 1 ? "s" : ""})` : "";
+      state.pos = ranges[0].anchor;
+      // length
+      state.length = viewUpdate.state.doc.length;
+      state.lines = viewUpdate.state.doc.lines;
+      state.cursor =
+        ranges[0].head - viewUpdate.state.doc.lineAt(ranges[0].head).from + 1;
+    };
 
-      // const { code } = toRefs(props)
-      // const editableCode = ref(code.value)
-      // watch(code, (newCode) => {
-      //     editableCode.value = newCode
-      // })
+    const debouncedUpdate = debounce((view: ViewUpdate) => {
+      modified = true;
+      emit("change", view);
+    }, 1000);
 
-      const extensions = computed(() => {
-        const result = [];
-        if (props.language) {
-          result.push(props.language());
-        }
-        if (props.theme) {
-          result.push(props.theme);
-        }
-        return result;
-      });
+    const handleUpdateModelValue = (_newCode: string, view: ViewUpdate) => {
+      debouncedUpdate(view);
+    };
 
-      const cmView = shallowRef<EditorView>();
-      const handleReady = ({ view }: any) => {
-        cmView.value = view;
-      };
-
-      // https://github.com/codemirror/commands/blob/main/test/test-history.ts
-      const handleUndo = () => {
-        undo({
-          state: cmView.value!.state,
-          dispatch: cmView.value!.dispatch,
-        });
-      };
-
-      const handleRedo = () => {
-        redo({
-          state: cmView.value!.state,
-          dispatch: cmView.value!.dispatch,
-        });
-      };
-
-      const state = reactive({
-        lines: 0,
-        cursor: 0,
-        selected: '',
-        length: 0
-      });
-
-      const handleStateUpdate = (viewUpdate: ViewUpdate) => {
-        // selected
-        const ranges = viewUpdate.state.selection.ranges;
-        const selected = ranges.reduce((plus, range) => plus + range.to - range.from, 0);
-        state.selected = selected > 0 ? `(${selected} char${selected > 1 ? 's' : ''})` : ''
-
-        let cursor = ranges[0].anchor + 1;
-        // length
-        state.length = viewUpdate.state.doc.length;
-        state.lines = viewUpdate.state.doc.lines;
-        let c = 0
-        for (let i = 1; i <= state.lines; i++) {
-            const line = viewUpdate.state.doc.line(i);
-            const n = line.to - line.from + 1;
-            if (c + n >= cursor) {
-                cursor -= c;
-                break;
-            }
-            c+=n;
-        }
-        state.cursor = cursor;
-      };
-
-      const debouncedUpdate = debounce((newCode: string) => {
-        emit('change', newCode);
-      }, 1000);
-
-      const handleUpdateModelValue = (newCode: string) => {
-        debouncedUpdate(newCode);
-      };
-
-      return {
-        log,
-        extensions,
-        state,
-        internalCode,
-        handleReady,
-        handleStateUpdate,
-        handleRedo,
-        handleUndo,
-        handleUpdateModelValue,
-      };
-    },
-  });
+    return {
+      log,
+      state,
+      internalCode,
+      handleReady,
+      handleStateUpdate,
+      handleRedo,
+      handleUndo,
+      handleUpdateModelValue,
+    };
+  },
+});
 </script>

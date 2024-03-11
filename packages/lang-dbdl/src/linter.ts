@@ -4,11 +4,28 @@ import { linter, Diagnostic } from "@codemirror/lint";
 export const langLinter: any = linter((view) => {
   let diagnostics: Diagnostic[] = [];
   if (view.state.doc.length == 0) {
-    return [];
+    return diagnostics;
   }
+  let columnNames: string[] = [];
   syntaxTree(view.state)
     .cursor()
     .iterate((node) => {
+      if (node.node.parent?.name === "ColumnName" && !node.type.isError) {
+        columnNames.push(view.state.sliceDoc(node.from, node.to));
+      }
+      if (node.node.parent?.name === "IndexColumnName") {
+        if (
+          node.from < node.to &&
+          columnNames.indexOf(view.state.sliceDoc(node.from, node.to)) == -1
+        ) {
+          diagnostics.push({
+            from: node.from,
+            to: node.to,
+            severity: "error",
+            message: "Column name not found",
+          });
+        }
+      }
       if (!node.type.isError) {
         return;
       }
