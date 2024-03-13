@@ -109,7 +109,7 @@ IndexDeclarationBlock {
 }
 
 IndexDeclaration {
-  IndexName? "(" (ColumnName Keyword? ("," ColumnName Keyword?)*) ")" indexDeclarationOptionElement*
+  IndexName? "(" (ColumnName Keyword? ("," ColumnName Keyword?)*) ")" IndexOptions*
 }
 
 IndexName {
@@ -117,7 +117,7 @@ IndexName {
   QuotedIdentifier 
 }
 
-indexDeclarationOptionElement {
+IndexOptions {
   Keyword |
   Comment
 }

@@ -417,7 +417,6 @@ export function tokensFor(d: Dialect) {
 export const insertSemicolon = new ExternalTokenizer(
   (input, stack) => {
     let { next } = input;
-    console.log(next, input.pos);
     if (next == Ch.BraceR || next == -1 || stack.context)
       input.acceptToken(insertSemi);
   },
